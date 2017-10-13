@@ -33,19 +33,20 @@ namespace MapleStoryFullDownloaderNXL
             string output = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Output");
             if (!Directory.Exists(output)) Directory.CreateDirectory(output);
 
-            ConcurrentQueue<Tuple<int, byte[]>> chunks = new ConcurrentQueue<Tuple<int, byte[]>>();
             Dictionary<string, FileEntry> FileNames = manifest.RealFileNames;
-            foreach (KeyValuePair<string, FileEntry> file in FileNames)
-            {
-                Console.WriteLine(file.Key);
+            KeyValuePair<string, FileEntry>[] directories = FileNames.Where(c => c.Value.ChunkHashes.First().Equals("__DIR__")).ToArray();
 
-                if (file.Value.ChunkHashes.First().Equals("__DIR__", StringComparison.CurrentCultureIgnoreCase))
-                {
-                    string subDirectory = Path.Combine(output, file.Key);
-                    if (File.Exists(subDirectory)) File.Delete(subDirectory);
-                    if (!Directory.Exists(subDirectory)) Directory.CreateDirectory(subDirectory);
-                    continue;
-                }
+            foreach (KeyValuePair<string, FileEntry> directory in directories)
+            {
+                string subDirectory = Path.Combine(output, directory.Key);
+                if (File.Exists(subDirectory)) File.Delete(subDirectory);
+                if (!Directory.Exists(subDirectory)) Directory.CreateDirectory(subDirectory);
+            }
+
+            FileNames.AsParallel().Where(c => !directories.Contains(c)).ForEach(file =>
+            {
+                ConcurrentQueue<Tuple<int, byte[]>> chunks = new ConcurrentQueue<Tuple<int, byte[]>>();
+                Console.WriteLine(file.Key);
 
                 string filePath = Path.Combine(output, file.Key);
 
@@ -83,7 +84,7 @@ namespace MapleStoryFullDownloaderNXL
                 }
 
                 Console.WriteLine($"{file.Key} Total: {writtenSize.Result} Expected: {file.Value.FileSize}");
-            }
+            });
 
             return "Hello World";
         }
