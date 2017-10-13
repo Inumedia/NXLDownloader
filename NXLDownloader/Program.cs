@@ -75,10 +75,11 @@ namespace MapleStoryFullDownloaderNXL
             consoleQueue.Start();
 
             // Download all of the files
-            FileNames.AsParallel().Where(c => !directories.Contains(c)).ForEach(file =>
+            Parallel.ForEach(FileNames.Where(c => !directories.Contains(c)), file =>
             {
                 ConcurrentQueue<Tuple<int, byte[]>> chunks = new ConcurrentQueue<Tuple<int, byte[]>>();
                 string filePath = Path.Combine(output, file.Key);
+                Log($"Starting download of {file.Key}");
 
                 // Get all of the chunks in their own threads
                 Task<int> writtenSize = Task.WhenAll(file.Value.ChunkHashes.Batch(Math.Max(1, file.Value.ChunkHashes.Count / Environment.ProcessorCount)).AsParallel().Select(c =>
