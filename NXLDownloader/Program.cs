@@ -1,12 +1,10 @@
-﻿using Ionic.Zlib;
+﻿using ComponentAce.Compression.Libs.zlib;
 using MoreLinq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
-using System.IO.MemoryMappedFiles;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -24,9 +22,9 @@ namespace MapleStoryFullDownloaderNXL
             ProductSummary MapleStorySummary = summaries.First(c => c.ProductId == "10100");
             Product MapleStory = JsonConvert.DeserializeObject<Product>(await client.GetStringAsync(MapleStorySummary.ProductLink));
             string latestManifestHash = await client.GetStringAsync(MapleStory.Details.ManifestURL);
-            byte[] ManifestZip = await client.GetByteArrayAsync($"https://download2.nexon.net/Game/nxl/games/10100/{latestManifestHash}");
+            byte[] ManifestCompressed = await client.GetByteArrayAsync($"https://download2.nexon.net/Game/nxl/games/10100/{latestManifestHash}");
             client.Dispose();
-            Manifest manifest = Manifest.Parse(ManifestZip);
+            Manifest manifest = Manifest.Parse(ManifestCompressed);
 
             string output = Path.Combine(Environment.CurrentDirectory, "Output");
             if (!Directory.Exists(output)) Directory.CreateDirectory(output);
@@ -95,7 +93,7 @@ namespace MapleStoryFullDownloaderNXL
         public static byte[] Decompress(Stream str)
         {
             using (MemoryStream result = new MemoryStream())
-            using (ZlibStream gzip = new ZlibStream(result, Ionic.Zlib.CompressionMode.Decompress))
+            using (ZOutputStream gzip = new ZOutputStream(result))
             {
                 byte[] buffer = new byte[1024];
                 int len;
