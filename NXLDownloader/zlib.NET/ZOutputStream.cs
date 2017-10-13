@@ -191,25 +191,6 @@ namespace ComponentAce.Compression.Libs.zlib
 			z.free();
 			z = null;
 		}
-		public override void  Close()
-		{
-			try
-			{
-				try
-				{
-					finish();
-				}
-				catch
-				{
-				}
-			}
-			finally
-			{
-				end();
-				out_Renamed.Close();
-				out_Renamed = null;
-			}
-		}
 		
 		public override void  Flush()
 		{

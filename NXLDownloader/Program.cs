@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace MapleStoryFullDownloaderNXL
@@ -26,7 +27,7 @@ namespace MapleStoryFullDownloaderNXL
             client.Dispose();
             Manifest manifest = Manifest.Parse(ManifestCompressed);
 
-            string output = Path.Combine(Environment.CurrentDirectory, "Output");
+            string output = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Output");
             if (!Directory.Exists(output)) Directory.CreateDirectory(output);
 
             ConcurrentQueue<Tuple<int, byte[]>> chunks = new ConcurrentQueue<Tuple<int, byte[]>>();
@@ -73,7 +74,7 @@ namespace MapleStoryFullDownloaderNXL
                             fileOut.Flush();
                         }
                         chunk = null;
-                        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, false);
+                        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true);
                     } while (chunks.TryDequeue(out chunk));
                     System.Threading.Thread.Sleep(1);
                 }
