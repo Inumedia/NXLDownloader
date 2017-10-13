@@ -13,7 +13,7 @@ namespace MapleStoryFullDownloaderNXL
 {
     public class FileEntry
     {
-        public static Action<string> Log = () => { };
+        public static Action<string> Log = (s) => { };
         [JsonProperty(PropertyName = "fsize")]
         public long FileSize;
         [JsonProperty(PropertyName = "mtime")]
