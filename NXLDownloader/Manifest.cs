@@ -10,6 +10,7 @@ namespace MapleStoryFullDownloaderNXL
     public class Manifest
     {
         public decimal BuildTime;
+        public DateTime BuiltAt { get => new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds((double)BuildTime).ToLocalTime(); }
         [JsonProperty(PropertyName = "filepath_encoding")]
         public string FilePathEncodingName;
         public Encoding FilePathEncoding
