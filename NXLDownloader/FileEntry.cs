@@ -13,7 +13,6 @@ namespace MapleStoryFullDownloaderNXL
 {
     public class FileEntry
     {
-        static SHA1 sha1 = SHA1.Create();
         [JsonProperty(PropertyName = "fsize")]
         public long FileSize;
         [JsonProperty(PropertyName = "mtime")]
@@ -51,6 +50,7 @@ namespace MapleStoryFullDownloaderNXL
                     {
                         byte[] decompressedData = Program.Decompress(data);
                         wrongData = decompressedData.Length != expectedSize;
+                        SHA1 sha1 = SHA1.Create();
                         string sha1Hash = string.Join("", sha1.ComputeHash(decompressedData).Select(c => c.ToString("x2")));
                         if (!sha1Hash.Equals(chunkHash, StringComparison.CurrentCultureIgnoreCase))
                         {
