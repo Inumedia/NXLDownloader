@@ -13,6 +13,7 @@ namespace MapleStoryFullDownloaderNXL
 {
     public class FileEntry
     {
+        public static Action<string> Log = () => { };
         [JsonProperty(PropertyName = "fsize")]
         public long FileSize;
         [JsonProperty(PropertyName = "mtime")]
@@ -54,7 +55,7 @@ namespace MapleStoryFullDownloaderNXL
                         string sha1Hash = string.Join("", sha1.ComputeHash(decompressedData).Select(c => c.ToString("x2")));
                         if (!sha1Hash.Equals(chunkHash, StringComparison.CurrentCultureIgnoreCase))
                         {
-                            Console.WriteLine($"Hash mismatch, expected {chunkHash}, got {sha1Hash}");
+                            Log($"Hash mismatch, expected {chunkHash}, got {sha1Hash}");
                             if (retry <= 5)
                                 continue;
                             throw new InvalidDataException($"Hash does not match expected {chunkHash} got {sha1Hash}");
@@ -64,7 +65,7 @@ namespace MapleStoryFullDownloaderNXL
                     }
                     catch (Exception)
                     {
-                        Console.WriteLine($"Error decompressing chunk {chunkHash} from {chunkPath} ({data.Length} vs {expectedSize}), trying again.");
+                        Log($"Error decompressing chunk {chunkHash} from {chunkPath} ({data.Length} vs {expectedSize}), trying again.");
                         if (retry >= 5) throw;
                     }
                 } while (!wrongData && retry++ < 5);
