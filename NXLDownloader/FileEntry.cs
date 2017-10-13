@@ -40,12 +40,26 @@ namespace MapleStoryFullDownloaderNXL
             {
                 string chunkPath = $"https://download2.nexon.net/Game/nxl/games/{productId}/{productId}/{chunkHash.Substring(0, 2)}/{chunkHash}";
 
-                using (Stream data = await client.GetStreamAsync(chunkPath))
+                bool wrongData = false;
+                int retry = 0;
+                do
                 {
-                    // TODO: Verify decompressed size with expected size
-                    return new Tuple<int, byte[]>(position, Program.Decompress(data));
-                }
+                    byte[] data = await client.GetByteArrayAsync(chunkPath);
+                    try
+                    {
+                        byte[] decompressedData = Program.Decompress(data);
+                        wrongData = decompressedData.Length != expectedSize;
+                        return new Tuple<int, byte[]>(position, decompressedData);
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine($"Error decompressing chunk {chunkHash} from {chunkPath} ({data.Length} vs {expectedSize}), trying again.");
+                        if (retry >= 5) throw;
+                    }
+                } while (!wrongData && retry++ < 5);
             }
+
+            return null;
         }
     }
 }

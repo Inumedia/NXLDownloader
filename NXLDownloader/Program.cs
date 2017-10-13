@@ -1,13 +1,16 @@
-﻿using ComponentAce.Compression.Libs.zlib;
-using MoreLinq;
+﻿using MoreLinq;
 using Newtonsoft.Json;
+using SharpCompress.Compressors.Deflate;
+using SharpCompress.Readers.GZip;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace MapleStoryFullDownloaderNXL
@@ -94,13 +97,9 @@ namespace MapleStoryFullDownloaderNXL
         public static byte[] Decompress(Stream str)
         {
             using (MemoryStream result = new MemoryStream())
-            using (ZOutputStream gzip = new ZOutputStream(result))
+            using (ZlibStream deflate = new ZlibStream(str, SharpCompress.Compressors.CompressionMode.Decompress, true))
             {
-                byte[] buffer = new byte[1024];
-                int len;
-                while ((len = str.Read(buffer, 0, buffer.Length)) > 0)
-                    gzip.Write(buffer, 0, len);
-                gzip.Flush();
+                deflate.CopyTo(result);
 
                 result.Position = 0;
                 return result.ToArray();
