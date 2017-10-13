@@ -62,12 +62,18 @@ namespace MapleStoryFullDownloaderNXL
             // Handle the console messages in its own thread so as to prevent any locking or messages being written at the same time
             Thread consoleQueue = new Thread(() =>
             {
-                while (running)
+                string message = null;
+                while (running || consoleMessages.TryDequeue(out message))
                 {
-                    string message;
-                    if (consoleMessages.TryDequeue(out message)) Console.WriteLine(message);
+                    do
+                    {
+                        if (message != null) Console.WriteLine(message);
+                        Thread.Sleep(1);
+                    } while (consoleMessages.TryDequeue(out message));
                 }
             });
+
+            consoleQueue.Start();
 
             // Download all of the files
             FileNames.AsParallel().Where(c => !directories.Contains(c)).ForEach(file =>
@@ -111,6 +117,10 @@ namespace MapleStoryFullDownloaderNXL
 
                 Log($"{file.Key} Total: {writtenSize.Result} Expected: {file.Value.FileSize}");
             });
+
+            // Exit out of the console message processor
+            running = false;
+            consoleQueue.Join(); // Wait for console processor to exit
 
             return "Hello";
         }
