@@ -58,7 +58,6 @@ namespace MapleStoryFullDownloaderNXL
             }
 
             bool running = true;
-            ConcurrentQueue<string> consoleMessages = new ConcurrentQueue<string>();
             // Handle the console messages in its own thread so as to prevent any locking or messages being written at the same time
             Thread consoleQueue = new Thread(() =>
             {
