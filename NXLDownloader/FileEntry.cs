@@ -55,7 +55,9 @@ namespace MapleStoryFullDownloaderNXL
                         if (!sha1Hash.Equals(chunkHash, StringComparison.CurrentCultureIgnoreCase))
                         {
                             Console.WriteLine($"Hash mismatch, expected {chunkHash}, got {sha1Hash}");
-                            wrongData = true;
+                            if (retry <= 5)
+                                continue;
+                            throw new InvalidDataException($"Hash does not match expected {chunkHash} got {sha1Hash}");
                         }
 
                         return new Tuple<int, byte[]>(position, decompressedData);
