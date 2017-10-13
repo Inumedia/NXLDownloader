@@ -7,11 +7,13 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using MoreLinq;
+using System.Security.Cryptography;
 
 namespace MapleStoryFullDownloaderNXL
 {
     public class FileEntry
     {
+        static SHA1 sha1 = SHA1.Create();
         [JsonProperty(PropertyName = "fsize")]
         public long FileSize;
         [JsonProperty(PropertyName = "mtime")]
@@ -49,6 +51,13 @@ namespace MapleStoryFullDownloaderNXL
                     {
                         byte[] decompressedData = Program.Decompress(data);
                         wrongData = decompressedData.Length != expectedSize;
+                        string sha1Hash = string.Join("", sha1.ComputeHash(decompressedData).Select(c => c.ToString("x2")));
+                        if (!sha1Hash.Equals(chunkHash, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            Console.WriteLine($"Hash mismatch, expected {chunkHash}, got {sha1Hash}");
+                            wrongData = true;
+                        }
+
                         return new Tuple<int, byte[]>(position, decompressedData);
                     }
                     catch (Exception)
