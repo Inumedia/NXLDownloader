@@ -24,19 +24,19 @@ namespace MapleStoryFullDownloaderNXL
         public List<string> ChunkSizesStrings;
         public int[] ChunkSizes { get => ChunkSizesStrings.Select(c => int.Parse(c)).ToArray();  }
 
-        public IEnumerable<Task<Tuple<int, byte[]>>> Download(string productId)
+        public IEnumerable<Tuple<long, byte[]>> Download(string productId)
         {
-            int position = 0;
+            long position = 0;
             for (int i = 0; i < ChunkHashes.Count; ++i)
             {
                 string hash = ChunkHashes[i];
-                int hashSize = ChunkSizes[i];
+                long hashSize = ChunkSizes[i];
                 yield return DownloadChunk(productId, hash, hashSize, position);
                 position += hashSize;
             }
         }
 
-        public static async Task<Tuple<int, byte[]>> DownloadChunk(string productId, string chunkHash, int expectedSize, int position)
+        public static Tuple<long, byte[]> DownloadChunk(string productId, string chunkHash, long expectedSize, long position)
         {
             using (HttpClient client = new HttpClient())
             {
@@ -46,11 +46,15 @@ namespace MapleStoryFullDownloaderNXL
                 int retry = 0;
                 do
                 {
-                    byte[] data = await client.GetByteArrayAsync(chunkPath);
+                    byte[] data = client.GetByteArrayAsync(chunkPath).Result;
                     try
                     {
                         byte[] decompressedData = Program.Decompress(data);
-                        wrongData = decompressedData.Length != expectedSize;
+                        if (decompressedData.Length != expectedSize && expectedSize != data.Length)
+                        {
+                            Log("Decompressed and chunk length doesn't match expected size");
+                            continue;
+                        }
                         SHA1 sha1 = SHA1.Create();
                         string sha1Hash = string.Join("", sha1.ComputeHash(decompressedData).Select(c => c.ToString("x2")));
                         if (!sha1Hash.Equals(chunkHash, StringComparison.CurrentCultureIgnoreCase))
@@ -61,14 +65,14 @@ namespace MapleStoryFullDownloaderNXL
                             throw new InvalidDataException($"Hash does not match expected {chunkHash} got {sha1Hash}");
                         }
 
-                        return new Tuple<int, byte[]>(position, decompressedData);
+                        return new Tuple<long, byte[]>(position, decompressedData);
                     }
                     catch (Exception)
                     {
                         Log($"Error decompressing chunk {chunkHash} from {chunkPath} ({data.Length} vs {expectedSize}), trying again.");
                         if (retry >= 5) throw;
                     }
-                } while (!wrongData && retry++ < 5);
+                } while (retry++ < 5);
             }
 
             return null;

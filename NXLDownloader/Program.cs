@@ -20,30 +20,32 @@ namespace MapleStoryFullDownloaderNXL
     {
         static ConcurrentQueue<string> consoleMessages = new ConcurrentQueue<string>();
         public static void Log(string message) => consoleMessages.Enqueue(message);
-        static void Main(string[] args) => Console.WriteLine(GetStuff().Result);
+        static void Main(string[] args) => GetStuff();
 
-        static async Task<string> GetStuff()
+        static void GetStuff()
         {
+            string downloadId = "10100";
+
             // Set the log handler for when hash mismatches or wrong sizes
             FileEntry.Log = Log;
 
             HttpClient client = new HttpClient();
             // Download the full list of Nexon games
-            ProductSummary[] summaries = JsonConvert.DeserializeObject<ProductSummary[]>(await client.GetStringAsync("http://nxl.nxfs.nexon.com/games/regions/1.json"));
+            ProductSummary[] summaries = JsonConvert.DeserializeObject<ProductSummary[]>(client.GetStringAsync("http://nxl.nxfs.nexon.com/games/regions/1.json").Result);
             // We only care about MapleStory
-            ProductSummary MapleStorySummary = summaries.First(c => c.ProductId == "10100");
+            ProductSummary MapleStorySummary = summaries.FirstOrDefault(c => c.ProductId == downloadId);
             // Download the full product info of MapleStory
-            Product MapleStory = JsonConvert.DeserializeObject<Product>(await client.GetStringAsync(MapleStorySummary.ProductLink));
+            Product MapleStory = JsonConvert.DeserializeObject<Product>(client.GetStringAsync($"http://api.nexon.io/products/{downloadId}").Result);
             // Get the manifest's hash
-            string latestManifestHash = await client.GetStringAsync(MapleStory.Details.ManifestURL);
+            string latestManifestHash = client.GetStringAsync(MapleStory.Details.ManifestURL).Result;
             // Download the manifest for MapleStory's files
-            byte[] ManifestCompressed = await client.GetByteArrayAsync($"https://download2.nexon.net/Game/nxl/games/{MapleStory.ProductId}/{latestManifestHash}");
+            byte[] ManifestCompressed = client.GetByteArrayAsync($"https://download2.nexon.net/Game/nxl/games/{MapleStory.ProductId}/{latestManifestHash}").Result;
             client.Dispose();
             // Parse the manifest
             Manifest manifest = Manifest.Parse(ManifestCompressed);
 
             // Ensure the output directory exists
-            string output = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), "Output");
+            string output = Path.Combine(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location), downloadId);
             if (!Directory.Exists(output)) Directory.CreateDirectory(output);
 
             Dictionary<string, FileEntry> FileNames = manifest.RealFileNames;
@@ -75,33 +77,25 @@ namespace MapleStoryFullDownloaderNXL
             consoleQueue.Start();
 
             // Download all of the files
-            Parallel.ForEach(FileNames.Where(c => !directories.Contains(c)), new ParallelOptions() { MaxDegreeOfParallelism = 4 }, file =>
+            //foreach (KeyValuePair<string, FileEntry> file in )
+            Parallel.ForEach(FileNames.Where(c => !directories.Contains(c)), file =>
             {
-                ConcurrentQueue<Tuple<int, byte[]>> chunks = new ConcurrentQueue<Tuple<int, byte[]>>();
                 string filePath = Path.Combine(output, file.Key);
                 Log($"Starting download of {file.Key}");
 
+                long position = 0;
                 // Get all of the chunks in their own threads
-                Task<int> writtenSize = Task.WhenAll(file.Value.ChunkHashes.Batch((int)Math.Max(1, file.Value.ChunkHashes.Count / (Environment.ProcessorCount / 4f))).AsParallel().Select(c =>
+                long writtenSize = file.Value.ChunkHashes.Select(hash =>
                 {
-                    return c.Select(async hash =>
-                    {
-                        int index = file.Value.ChunkHashes.IndexOf(hash); // Which chunk are we downloading
-                        int size = file.Value.ChunkSizes[index]; // How big is the chunk
-                        int position = file.Value.ChunkSizes.Take(index).Sum(); // Calc the chunks offset
-                        Tuple<int, byte[]> chunkToQueue = await FileEntry.DownloadChunk(manifest.Product, hash, size, position); // Download the chunk
-                        chunks.Enqueue(chunkToQueue); // Queue it up to be written
-                        chunkToQueue = null;
-                        return size;
-                    });
-                }).SelectMany(c => c)).ContinueWith(c => c.Result.Sum()); // Get the sum of the chunked data
-
-                Tuple<int, byte[]> chunk = null;
-                while (!writtenSize.IsCompleted || chunks.TryDequeue(out chunk)) // Process the chunks and write them to the file in a single thread
-                {
+                    Tuple<long, byte[]> chunk = null;
+                    int index = file.Value.ChunkHashes.IndexOf(hash); // Which chunk are we downloading
+                    long size = file.Value.ChunkSizes[index]; // How big is the chunk
+                    long realSize = 0;
                     do
                     {
-                        if (chunk == null) continue;
+                        chunk = FileEntry.DownloadChunk(manifest.Product, hash, size, position); // Download the chunk
+                        realSize = chunk.Item2.Length;
+
                         using (FileStream fileOut = File.OpenWrite(filePath)) // Reusing the same FileStream seems to cause memory issues, so make a new one
                         {
                             fileOut.Position = chunk.Item1; // The chunk's offset
@@ -109,20 +103,24 @@ namespace MapleStoryFullDownloaderNXL
                             Log($"Wrote 0x{chunk.Item2.Length.ToString("X")} at 0x{chunk.Item1.ToString("X")} to {file.Key}");
                             fileOut.Flush(); // Flush it out and dispose of the FileStream
                         }
-                        chunk = null;
-                        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true); // Try to GC if possible
-                    } while (chunks.TryDequeue(out chunk));
-                    System.Threading.Thread.Sleep(1);
-                }
+                    } while (chunk == null);
 
-                Log($"{file.Key} Total: {writtenSize.Result} Expected: {file.Value.FileSize}");
+                    position += realSize;
+
+                    chunk = null;
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true); // Try to GC if possible
+
+                    return realSize;
+                }).Sum(); // Get the sum of the chunked data
+
+                if (writtenSize != file.Value.FileSize)
+                    Log($"ERROR, mismatch written and expected size");
+                Log($"{file.Key} Total: {writtenSize} Expected: {file.Value.FileSize}");
             });
 
             // Exit out of the console message processor
             running = false;
             consoleQueue.Join(); // Wait for console processor to exit
-
-            return "Hello";
         }
 
         public static byte[] Decompress(byte[] data)
