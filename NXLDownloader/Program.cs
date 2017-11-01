@@ -225,7 +225,7 @@ namespace NXLDownloader
             long toDownload = manifest.TotalUncompressedSize;
             long downloaded = 0;
 
-            foreach (KeyValuePair<string, FileEntry> file in FileNames.Where(c => !directories.Contains(c)))
+            foreach (KeyValuePair<string, FileEntry> file in FileNames.Where(c => !directories.Contains(c) && c.Value.ChunkHashes.Count > 0))
             {
                 string filePath = Path.Combine(output, file.Key);
                 Log($"Starting download of {file.Key}");
@@ -337,7 +337,7 @@ namespace NXLDownloader
 
                 if (writtenSize != file.Value.FileSize)
                     Log($"ERROR, mismatch written and expected size");
-                if (file.Value.FileSize != existingFileSize)
+                if (file.Value.FileSize != existingFileSize && file.Value.FileSize != writtenSize)
                 {
                     Log($"Existing file size does not match expected size, trimming to {file.Value.FileSize}");
                     using (FileStream fileOut = File.OpenWrite(filePath)) // Ensure no trailing excess data
