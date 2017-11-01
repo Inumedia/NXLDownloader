@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using MoreLinq;
 using System.Security.Cryptography;
 
-namespace MapleStoryFullDownloaderNXL
+namespace NXLDownloader
 {
     public class FileEntry
     {
@@ -46,9 +46,10 @@ namespace MapleStoryFullDownloaderNXL
                 int retry = 0;
                 do
                 {
-                    byte[] data = client.GetByteArrayAsync(chunkPath).Result;
+                    byte[] data = new byte[0];
                     try
                     {
+                        data = client.GetByteArrayAsync(chunkPath).Result;
                         byte[] decompressedData = Program.Decompress(data);
                         if (decompressedData.Length != expectedSize && expectedSize != data.Length)
                         {

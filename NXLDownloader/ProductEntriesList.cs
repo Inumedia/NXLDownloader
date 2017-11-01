@@ -4,9 +4,8 @@ using System.Text;
 
 namespace NXLDownloader
 {
-    public class Patch
+    public class ProductEntriesList
     {
-        public string DownloadURL;
-        public long RegisterDateUTC;
+        public ProductEntry[] Products;
     }
 }

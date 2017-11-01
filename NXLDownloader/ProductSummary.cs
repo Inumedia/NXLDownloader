@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace MapleStoryFullDownloaderNXL
+namespace NXLDownloader
 {
     public class ProductSummary
     {
