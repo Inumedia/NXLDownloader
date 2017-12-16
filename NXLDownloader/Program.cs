@@ -39,7 +39,7 @@ namespace NXLDownloader
 
             Console.WriteLine("Getting list of products");
             // If there's an exception here, we can't recover
-            ProductEntriesList productList = JsonConvert.DeserializeObject<ProductEntriesList>(client.GetStringAsync("http://api.nexon.io/products").Result);
+            ProductEntriesList productList = JsonConvert.DeserializeObject<ProductEntriesList>(client.GetStringAsync("http://nexon.ws/api/gms/products").Result);
             Console.WriteLine($"Found {productList.Products.Length} products, downloading info");
             Product[] products = productList.Products.Select(c => {
                 try
@@ -63,7 +63,7 @@ namespace NXLDownloader
                         Console.WriteLine($"[{i}] {product.ProductId} {product.FriendlyProductName ?? product.ProductName}");
                     }
 
-                    if (products.Length != 0) Console.Write($"Enter product number (0-{products.Length}): ");
+                    if (products.Length != 0) Console.Write($"Enter product number (0-{products.Length-1}): ");
                     else Console.WriteLine("Enter product ID: ");
 
                     if (string.IsNullOrWhiteSpace(productSelected)) productSelected = Console.ReadLine().Trim('\r', '\n', ' ');
@@ -77,7 +77,7 @@ namespace NXLDownloader
                             Console.WriteLine("Unknown product ID, attempting to download info");
                             try
                             {
-                                string details = client.GetStringAsync($"http://api.nexon.io/products/{productSelected}").Result;
+                                string details = client.GetStringAsync($"http://nexon.ws/api/gms/products/{productSelected}").Result;
                                 selected = JsonConvert.DeserializeObject<Product>(details);
                             } catch (Exception ex)
                             {
@@ -122,7 +122,7 @@ namespace NXLDownloader
                     }
 
                     if (hashes.Length == 0) Console.Write("No manifests found, enter manifest hash to attempt to download: ");
-                    else Console.Write($"Select manifest (0-{hashes.Length}): ");
+                    else Console.Write($"Select manifest (0-{hashes.Length-1}): ");
 
                     hash = Console.ReadLine().Trim('\r', '\n', ' ');
 
